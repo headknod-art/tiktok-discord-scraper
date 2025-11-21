@@ -1,0 +1,2 @@
+pip install TikTokApi playwright asyncio python-dotenv
+playwright install
