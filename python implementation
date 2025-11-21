@@ -1,0 +1,453 @@
+# tiktok_scraper.py
+"""
+TikTok Discord Scraper
+A comprehensive Python-based TikTok scraper for Discord bot integration.
+Supports user profiles, videos, trending content, hashtags, comments, and sounds.
+"""
+
+import asyncio
+import os
+import logging
+from typing import List, Dict, Optional, Any
+from dotenv import load_dotenv
+from TikTokApi import TikTokApi
+import time
+
+# Load environment variables
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+class TikTokScraper:
+    """
+    TikTok scraper with support for profiles, videos, hashtags, comments, and sounds.
+    Includes MS_TOKEN management, rate limiting, and error handling.
+    """
+    
+    def __init__(self, ms_token: Optional[str] = None, headless: bool = True):
+        """
+        Initialize the TikTok scraper.
+        
+        Args:
+            ms_token (str, optional): MS_TOKEN from browser cookies. If None, auto-generates.
+            headless (bool): Run browser in headless mode. Default True.
+        """
+        self.ms_token = ms_token or os.getenv('MS_TOKEN')
+        self.headless = headless if os.getenv('HEADLESS') is None else os.getenv('HEADLESS').lower() == 'true'
+        self.rate_limit = int(os.getenv('RATE_LIMIT', 10))
+        self.max_retries = int(os.getenv('MAX_RETRIES', 3))
+        
+        self.api: Optional[TikTokApi] = None
+        self.last_request_time = 0
+        self.request_delay = 60.0 / self.rate_limit  # Delay between requests
+        
+        logger.info(f"TikTokScraper initialized (headless={self.headless}, rate_limit={self.rate_limit}/min)")
+    
+    async def initialize(self):
+        """
+        Initialize the TikTok API session.
+        Must be called before any scraping operations.
+        """
+        try:
+            self.api = TikTokApi()
+            
+            if self.ms_token:
+                logger.info("Using provided MS_TOKEN")
+                await self.api.create_sessions(
+                    ms_tokens=[self.ms_token],
+                    num_sessions=1,
+                    sleep_after=3,
+                    headless=self.headless
+                )
+            else:
+                logger.info("Auto-generating MS_TOKEN")
+                await self.api.create_sessions(
+                    num_sessions=1,
+                    sleep_after=3,
+                    headless=self.headless
+                )
+            
+            logger.info("TikTok API initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize TikTok API: {e}")
+            raise
+    
+    async def _rate_limit_delay(self):
+        """Apply rate limiting delay between requests."""
+        current_time = time.time()
+        time_since_last = current_time - self.last_request_time
+        
+        if time_since_last < self.request_delay:
+            wait_time = self.request_delay - time_since_last
+            logger.debug(f"Rate limiting: waiting {wait_time:.2f}s")
+            await asyncio.sleep(wait_time)
+        
+        self.last_request_time = time.time()
+    
+    async def _retry_request(self, func, *args, **kwargs) -> Any:
+        """
+        Retry a request with exponential backoff.
+        
+        Args:
+            func: Async function to retry
+            *args, **kwargs: Arguments to pass to the function
+            
+        Returns:
+            Result from the function
+        """
+        for attempt in range(self.max_retries):
+            try:
+                await self._rate_limit_delay()
+                result = await func(*args, **kwargs)
+                return result
+                
+            except Exception as e:
+                if attempt < self.max_retries - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    logger.warning(f"Request failed (attempt {attempt + 1}/{self.max_retries}): {e}. Retrying in {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    logger.error(f"Request failed after {self.max_retries} attempts: {e}")
+                    raise
+    
+    async def get_trending_videos(self, count: int = 30) -> List[Dict]:
+        """
+        Get currently trending videos on TikTok.
+        
+        Args:
+            count (int): Number of videos to retrieve (default: 30)
+            
+        Returns:
+            List[Dict]: List of video dictionaries
+        """
+        if not self.api:
+            raise RuntimeError("API not initialized. Call initialize() first.")
+        
+        logger.info(f"Fetching {count} trending videos...")
+        
+        try:
+            videos = []
+            async for video in self.api.trending.videos(count=count):
+                video_data = video.as_dict
+                videos.append(video_data)
+                
+                if len(videos) >= count:
+                    break
+            
+            logger.info(f"Successfully retrieved {len(videos)} trending videos")
+            return videos
+            
+        except Exception as e:
+            logger.error(f"Error fetching trending videos: {e}")
+            return []
+    
+    async def get_user_profile(self, username: str) -> Dict:
+        """
+        Get user profile information.
+        
+        Args:
+            username (str): TikTok username (without @)
+            
+        Returns:
+            Dict: User profile dictionary
+        """
+        if not self.api:
+            raise RuntimeError("API not initialized. Call initialize() first.")
+        
+        logger.info(f"Fetching profile for user: {username}")
+        
+        async def _get_user():
+            user = self.api.user(username)
+            user_data = await user.info()
+            return user_data
+        
+        try:
+            user_data = await self._retry_request(_get_user)
+            logger.info(f"Successfully retrieved profile for @{username}")
+            return user_data
+            
+        except Exception as e:
+            logger.error(f"Error fetching user profile for @{username}: {e}")
+            return {}
+    
+    async def get_user_videos(self, username: str, count: int = 30) -> List[Dict]:
+        """
+        Get videos from a specific user.
+        
+        Args:
+            username (str): TikTok username (without @)
+            count (int): Number of videos to retrieve
+            
+        Returns:
+            List[Dict]: List of video dictionaries
+        """
+        if not self.api:
+            raise RuntimeError("API not initialized. Call initialize() first.")
+        
+        logger.info(f"Fetching {count} videos from @{username}...")
+        
+        try:
+            user = self.api.user(username)
+            videos = []
+            
+            async for video in user.videos(count=count):
+                video_data = video.as_dict
+                videos.append(video_data)
+                
+                if len(videos) >= count:
+                    break
+            
+            logger.info(f"Successfully retrieved {len(videos)} videos from @{username}")
+            return videos
+            
+        except Exception as e:
+            logger.error(f"Error fetching videos from @{username}: {e}")
+            return []
+    
+    async def get_videos_by_hashtag(self, hashtag: str, count: int = 30) -> List[Dict]:
+        """
+        Get videos by hashtag.
+        
+        Args:
+            hashtag (str): Hashtag name (without #)
+            count (int): Number of videos to retrieve
+            
+        Returns:
+            List[Dict]: List of video dictionaries
+        """
+        if not self.api:
+            raise RuntimeError("API not initialized. Call initialize() first.")
+        
+        logger.info(f"Fetching {count} videos for hashtag: #{hashtag}...")
+        
+        try:
+            tag = self.api.hashtag(name=hashtag)
+            videos = []
+            
+            async for video in tag.videos(count=count):
+                video_data = video.as_dict
+                videos.append(video_data)
+                
+                if len(videos) >= count:
+                    break
+            
+            logger.info(f"Successfully retrieved {len(videos)} videos for #{hashtag}")
+            return videos
+            
+        except Exception as e:
+            logger.error(f"Error fetching videos for #{hashtag}: {e}")
+            return []
+    
+    async def get_video_comments(self, video_url: str, max_comments: int = 100) -> List[Dict]:
+        """
+        Get comments from a video.
+        
+        Args:
+            video_url (str): Full TikTok video URL
+            max_comments (int): Maximum number of comments to retrieve
+            
+        Returns:
+            List[Dict]: List of comment dictionaries
+        """
+        if not self.api:
+            raise RuntimeError("API not initialized. Call initialize() first.")
+        
+        logger.info(f"Fetching up to {max_comments} comments from video...")
+        
+        try:
+            # Extract video ID from URL
+            video_id = video_url.split('/')[-1].split('?')[0]
+            
+            video = self.api.video(id=video_id)
+            comments = []
+            
+            async for comment in video.comments(count=max_comments):
+                comment_data = comment.as_dict
+                comments.append(comment_data)
+                
+                if len(comments) >= max_comments:
+                    break
+            
+            logger.info(f"Successfully retrieved {len(comments)} comments")
+            return comments
+            
+        except Exception as e:
+            logger.error(f"Error fetching comments: {e}")
+            return []
+    
+    async def get_trending_sounds(self, count: int = 20) -> List[Dict]:
+        """
+        Get trending sounds/music on TikTok.
+        
+        Args:
+            count (int): Number of sounds to retrieve
+            
+        Returns:
+            List[Dict]: List of sound dictionaries
+        """
+        if not self.api:
+            raise RuntimeError("API not initialized. Call initialize() first.")
+        
+        logger.info(f"Fetching {count} trending sounds...")
+        
+        try:
+            # Get trending videos and extract their sounds
+            sounds_map = {}
+            trending_videos = await self.get_trending_videos(count=count * 3)
+            
+            for video in trending_videos:
+                music = video.get('music', {})
+                music_id = music.get('id')
+                
+                if music_id and music_id not in sounds_map:
+                    sounds_map[music_id] = {
+                        'id': music_id,
+                        'title': music.get('title', 'Unknown'),
+                        'author_name': music.get('authorName', 'Unknown'),
+                        'duration': music.get('duration', 0),
+                        'play_url': music.get('playUrl', ''),
+                        'cover': music.get('coverLarge', music.get('coverMedium', '')),
+                        'original': music.get('original', False),
+                        'video_count': 1
+                    }
+                elif music_id:
+                    sounds_map[music_id]['video_count'] += 1
+            
+            # Sort by video count (popularity)
+            sounds = sorted(sounds_map.values(), key=lambda x: x['video_count'], reverse=True)[:count]
+            
+            logger.info(f"Successfully retrieved {len(sounds)} trending sounds")
+            return sounds
+            
+        except Exception as e:
+            logger.error(f"Error fetching trending sounds: {e}")
+            return []
+    
+    async def search_users(self, query: str, count: int = 20) -> List[Dict]:
+        """
+        Search for users by query.
+        
+        Args:
+            query (str): Search query
+            count (int): Number of results to retrieve
+            
+        Returns:
+            List[Dict]: List of user dictionaries
+        """
+        if not self.api:
+            raise RuntimeError("API not initialized. Call initialize() first.")
+        
+        logger.info(f"Searching for users: '{query}'...")
+        
+        try:
+            search = self.api.search
+            users = []
+            
+            async for user in search.users(query, count=count):
+                user_data = user.as_dict
+                users.append(user_data)
+                
+                if len(users) >= count:
+                    break
+            
+            logger.info(f"Successfully found {len(users)} users matching '{query}'")
+            return users
+            
+        except Exception as e:
+            logger.error(f"Error searching for users '{query}': {e}")
+            return []
+    
+    async def get_video_info(self, video_url: str) -> Dict:
+        """
+        Get detailed information about a specific video.
+        
+        Args:
+            video_url (str): Full TikTok video URL
+            
+        Returns:
+            Dict: Video information dictionary
+        """
+        if not self.api:
+            raise RuntimeError("API not initialized. Call initialize() first.")
+        
+        logger.info(f"Fetching video info...")
+        
+        try:
+            # Extract video ID from URL
+            video_id = video_url.split('/')[-1].split('?')[0]
+            
+            video = self.api.video(id=video_id)
+            video_data = await video.info()
+            
+            logger.info(f"Successfully retrieved video info for ID: {video_id}")
+            return video_data
+            
+        except Exception as e:
+            logger.error(f"Error fetching video info: {e}")
+            return {}
+    
+    async def close(self):
+        """Close the scraper and clean up resources."""
+        if self.api:
+            try:
+                # The TikTokApi context manager handles cleanup
+                logger.info("Closing TikTok scraper...")
+            except Exception as e:
+                logger.error(f"Error closing scraper: {e}")
+
+
+# Example usage
+async def main():
+    """Example usage of the TikTok scraper."""
+    scraper = TikTokScraper()
+    
+    try:
+        # Initialize the scraper
+        await scraper.initialize()
+        
+        # Example 1: Get trending videos
+        print("\n=== Trending Videos ===")
+        trending = await scraper.get_trending_videos(count=5)
+        for i, video in enumerate(trending, 1):
+            author = video.get('author', {})
+            stats = video.get('stats', {})
+            print(f"{i}. @{author.get('uniqueId', 'unknown')}: {video.get('desc', 'No description')[:50]}...")
+            print(f"   Likes: {stats.get('diggCount', 0):,} | Comments: {stats.get('commentCount', 0):,}")
+        
+        # Example 2: Get user profile
+        print("\n=== User Profile ===")
+        user = await scraper.get_user_profile("therock")
+        if user:
+            print(f"Username: @{user.get('uniqueId', 'unknown')}")
+            print(f"Followers: {user.get('stats', {}).get('followerCount', 0):,}")
+            print(f"Videos: {user.get('stats', {}).get('videoCount', 0):,}")
+        
+        # Example 3: Search hashtag
+        print("\n=== Hashtag Search ===")
+        hashtag_videos = await scraper.get_videos_by_hashtag("funny", count=3)
+        print(f"Found {len(hashtag_videos)} videos for #funny")
+        
+        # Example 4: Get trending sounds
+        print("\n=== Trending Sounds ===")
+        sounds = await scraper.get_trending_sounds(count=5)
+        for i, sound in enumerate(sounds, 1):
+            print(f"{i}. {sound.get('title', 'Unknown')} by {sound.get('author_name', 'Unknown')}")
+            print(f"   Used in {sound.get('video_count', 0)} videos")
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        
+    finally:
+        # Always close the scraper
+        await scraper.close()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
