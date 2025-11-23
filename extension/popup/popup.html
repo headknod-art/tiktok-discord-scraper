@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TikTok Discord Scraper</title>
+  <link rel="stylesheet" href="../styles/shared.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="flex flex-between">
+        <div class="flex flex-gap-sm" style="align-items: center;">
+          <img src="../icons/icon48.png" alt="Logo" class="logo">
+          <h1 class="app-title">TikTok → Discord</h1>
+        </div>
+        <div class="status-badge" id="statusBadge">
+          <span class="status-indicator status-idle"></span>
+          <span class="status-text">Idle</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="popup-main">
+      <!-- Quick Stats -->
+      <div class="card stats-card">
+        <div class="grid grid-3">
+          <div class="stat">
+            <span class="stat-value" id="statScraped">0</span>
+            <span class="stat-label">Scraped</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="statPosted">0</span>
+            <span class="stat-label">Posted</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="statErrors">0</span>
+            <span class="stat-label">Errors</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Last Run Info -->
+      <div class="card info-card">
+        <div class="info-row">
+          <span class="info-label">Last Run:</span>
+          <span class="info-value" id="lastRun">Never</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Last Success:</span>
+          <span class="info-value" id="lastSuccess">Never</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Auto-Run:</span>
+          <span class="info-value">
+            <span class="badge" id="autoRunBadge">Disabled</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Current Activity -->
+      <div class="card activity-card" id="activityCard" style="display: none;">
+        <div class="flex flex-between mb-sm">
+          <span class="font-bold">Current Activity</span>
+          <div class="spinner"></div>
+        </div>
+        <div class="activity-phase" id="activityPhase">Initializing...</div>
+        <div class="progress-bar mt-sm">
+          <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Error Display -->
+      <div class="card error-card" id="errorCard" style="display: none;">
+        <div class="flex flex-gap-sm" style="align-items: flex-start;">
+          <span style="font-size: 20px;">⚠️</span>
+          <div style="flex: 1;">
+            <div class="font-bold mb-sm">Last Error</div>
+            <div class="error-message" id="errorMessage"></div>
+            <button class="btn btn-sm btn-outline mt-sm" id="dismissErrorBtn">Dismiss</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="actions-grid">
+        <button class="btn btn-primary btn-block btn-lg" id="runNowBtn">
+          <span>▶️</span>
+          <span>Run Now</span>
+        </button>
+        <button class="btn btn-outline btn-block" id="viewHistoryBtn">
+          <span>📋</span>
+          <span>View History</span>
+        </button>
+        <button class="btn btn-outline btn-block" id="settingsBtn">
+          <span>⚙️</span>
+          <span>Settings</span>
+        </button>
+      </div>
+
+      <!-- Configuration Status -->
+      <div class="card config-status-card">
+        <div class="card-header">Configuration Status</div>
+        <div class="config-item">
+          <span class="config-label">TikTok Token:</span>
+          <span class="badge" id="tiktokTokenStatus">Not Set</span>
+        </div>
+        <div class="config-item">
+          <span class="config-label">Discord Token:</span>
+          <span class="badge" id="discordTokenStatus">Not Set</span>
+        </div>
+        <div class="config-item">
+          <span class="config-label">Channel ID:</span>
+          <span class="badge" id="channelIdStatus">Not Set</span>
+        </div>
+        <div class="mt-md">
+          <button class="btn btn-secondary btn-block btn-sm" id="quickSetupBtn">
+            Quick Setup
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <div class="footer-links">
+        <a href="#" id="docsLink" class="footer-link">📖 Docs</a>
+        <a href="#" id="githubLink" class="footer-link">🔗 GitHub</a>
+        <a href="#" id="supportLink" class="footer-link">💬 Support</a>
+      </div>
+      <div class="version">v2.0.0</div>
+    </footer>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

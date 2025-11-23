@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TikTok Discord Scraper - Settings</title>
+  <link rel="stylesheet" href="../styles/shared.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <img src="../icons/icon48.png" alt="Logo" class="sidebar-logo">
+        <h2 class="sidebar-title">Settings</h2>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#general" class="nav-item active" data-tab="general">
+          <span class="nav-icon">⚙️</span>
+          <span>General</span>
+        </a>
+        <a href="#tiktok" class="nav-item" data-tab="tiktok">
+          <span class="nav-icon">🎵</span>
+          <span>TikTok</span>
+        </a>
+        <a href="#discord" class="nav-item" data-tab="discord">
+          <span class="nav-icon">💬</span>
+          <span>Discord</span>
+        </a>
+        <a href="#filtering" class="nav-item" data-tab="filtering">
+          <span class="nav-icon">🔍</span>
+          <span>Filtering</span>
+        </a>
+        <a href="#schedule" class="nav-item" data-tab="schedule">
+          <span class="nav-icon">⏰</span>
+          <span>Schedule</span>
+        </a>
+        <a href="#history" class="nav-item" data-tab="history">
+          <span class="nav-icon">📋</span>
+          <span>History</span>
+        </a>
+        <a href="#advanced" class="nav-item" data-tab="advanced">
+          <span class="nav-icon">🔧</span>
+          <span>Advanced</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="content-header">
+        <h1 id="pageTitle">General Settings</h1>
+        <div class="header-actions">
+          <button class="btn btn-outline btn-sm" id="resetBtn">Reset to Defaults</button>
+          <button class="btn btn-primary btn-sm" id="saveBtn">Save Changes</button>
+        </div>
+      </header>
+
+      <!-- Toast Notification -->
+      <div class="toast" id="toast" style="display: none;">
+        <span id="toastMessage"></span>
+      </div>
+
+      <!-- Tab: General -->
+      <section class="tab-content active" id="tab-general">
+        <div class="card">
+          <div class="card-header">Application Settings</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Extension Name</label>
+              <input type="text" class="form-input" value="TikTok Discord Scraper" disabled>
+              <span class="form-help">The name of this extension</span>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Version</label>
+              <input type="text" class="form-input" value="2.0.0" disabled>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Quick Actions</div>
+          <div class="card-body">
+            <div class="actions-grid">
+              <button class="btn btn-primary" id="testConnectionBtn">Test TikTok Connection</button>
+              <button class="btn btn-secondary" id="testDiscordBtn">Test Discord Connection</button>
+              <button class="btn btn-outline" id="exportDataBtn">Export Data</button>
+              <button class="btn btn-outline" id="importDataBtn">Import Data</button>
+            </div>
+            <input type="file" id="importFileInput" accept=".json" style="display: none;">
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab: TikTok -->
+      <section class="tab-content" id="tab-tiktok">
+        <div class="card">
+          <div class="card-header">TikTok API Configuration</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">MS Token</label>
+              <input type="password" class="form-input" id="msToken" placeholder="Enter your TikTok ms_token">
+              <span class="form-help">
+                Required for reliable scraping. Get this from your browser cookies after logging into TikTok.
+                <a href="#" id="msTokenHelpLink">How to get this?</a>
+              </span>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Trending Videos Count</label>
+              <input type="number" class="form-input" id="trendingCount" min="10" max="100" value="50">
+              <span class="form-help">Number of trending videos to fetch (10-100)</span>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Browser Engine</label>
+              <select class="form-select" id="browserEngine">
+                <option value="chromium">Chromium</option>
+                <option value="firefox">Firefox</option>
+                <option value="webkit">WebKit</option>
+              </select>
+              <span class="form-help">Browser engine for scraping (Chromium recommended)</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab: Discord -->
+      <section class="tab-content" id="tab-discord">
+        <div class="card">
+          <div class="card-header">Discord Integration</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="flex flex-between">
+                <span class="form-label">Use Webhook Instead of Bot</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="useWebhook">
+                  <span class="toggle-slider"></span>
+                </label>
+              </label>
+              <span class="form-help">Webhooks are simpler but have limited functionality</span>
+            </div>
+            
+            <div id="botTokenSection">
+              <div class="form-group">
+                <label class="form-label">Discord Bot Token</label>
+                <input type="password" class="form-input" id="botToken" placeholder="Enter your Discord bot token">
+                <span class="form-help">
+                  Get this from <a href="https://discord.com/developers/applications" target="_blank">Discord Developer Portal</a>
+                </span>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Channel ID</label>
+                <input type="text" class="form-input" id="channelId" placeholder="Enter Discord channel ID">
+                <span class="form-help">Right-click channel → Copy ID (Developer Mode must be enabled)</span>
+              </div>
+            </div>
+            
+            <div id="webhookSection" style="display: none;">
+              <div class="form-group">
+                <label class="form-label">Webhook URL</label>
+                <input type="url" class="form-input" id="webhookUrl" placeholder="https://discord.com/api/webhooks/...">
+                <span class="form-help">
+                  Get this from Channel Settings → Integrations → Webhooks
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab: Filtering -->
+      <section class="tab-content" id="tab-filtering">
+        <div class="card">
+          <div class="card-header">Profile Filtering Options</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Minimum Followers</label>
+              <input type="number" class="form-input" id="minFollowers" min="0" step="1000" value="100000">
+              <span class="form-help">Only post profiles with at least this many followers</span>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Minimum Engagement Rate (%)</label>
+              <input type="number" class="form-input" id="minEngagementRate" min="0" max="100" step="0.1" value="0">
+              <span class="form-help">Minimum engagement rate (likes/followers ratio). 0 = disabled</span>
+            </div>
+            
+            <div class="form-group">
+              <label class="flex flex-between">
+                <span class="form-label">Verified Accounts Only</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="verifiedOnly">
+                  <span class="toggle-slider"></span>
+                </label>
+              </label>
+              <span class="form-help">Only post verified (blue checkmark) profiles</span>
+            </div>
+            
+            <div class="form-group">
+              <label class="flex flex-between">
+                <span class="form-label">Exclude Already Posted</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="excludePosted" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </label>
+              <span class="form-help">Skip profiles that have already been posted</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab: Schedule -->
+      <section class="tab-content" id="tab-schedule">
+        <div class="card">
+          <div class="card-header">Automatic Scheduling</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="flex flex-between">
+                <span class="form-label">Enable Auto-Run</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="scheduleEnabled">
+                  <span class="toggle-slider"></span>
+                </label>
+              </label>
+              <span class="form-help">Automatically run the scraper at regular intervals</span>
+            </div>
+            
+            <div class="form-group" id="intervalSection">
+              <label class="form-label">Run Interval (minutes)</label>
+              <input type="number" class="form-input" id="intervalMinutes" min="15" max="1440" value="60">
+              <span class="form-help">How often to run the scraper (15-1440 minutes)</span>
+            </div>
+            
+            <div class="alert alert-info">
+              <strong>Note:</strong> The scraper will run in the background at the specified interval. 
+              Make sure your configuration is correct before enabling auto-run.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab: History -->
+      <section class="tab-content" id="tab-history">
+        <div class="card">
+          <div class="card-header flex flex-between">
+            <span>Posted Profiles History</span>
+            <button class="btn btn-outline btn-sm" id="clearHistoryBtn">Clear History</button>
+          </div>
+          <div class="card-body">
+            <div id="historyList" class="history-list">
+              <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <p>No profiles posted yet</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab: Advanced -->
+      <section class="tab-content" id="tab-advanced">
+        <div class="card">
+          <div class="card-header">Advanced Settings</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Log Level</label>
+              <select class="form-select" id="logLevel">
+                <option value="DEBUG">Debug</option>
+                <option value="INFO" selected>Info</option>
+                <option value="WARNING">Warning</option>
+                <option value="ERROR">Error</option>
+                <option value="CRITICAL">Critical</option>
+              </select>
+              <span class="form-help">Console logging verbosity</span>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Max Retries</label>
+              <input type="number" class="form-input" id="maxRetries" min="0" max="10" value="3">
+              <span class="form-help">Maximum retry attempts for failed API calls</span>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Retry Delay (ms)</label>
+              <input type="number" class="form-input" id="retryDelay" min="1000" max="30000" step="1000" value="5000">
+              <span class="form-help">Base delay between retry attempts</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Data Management</div>
+          <div class="card-body">
+            <div class="actions-grid">
+              <button class="btn btn-outline" id="viewStorageBtn">View Storage Data</button>
+              <button class="btn btn-error" id="clearAllDataBtn">Clear All Data</button>
+            </div>
+            
+            <div class="alert alert-warning mt-md">
+              <strong>Warning:</strong> Clearing all data will remove your configuration, history, and statistics. This action cannot be undone.
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>
